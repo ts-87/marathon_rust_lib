@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 num-traits = "0.2.11"
 ndarray = "0.13.0"
+rand = { version = "0.7.3", features = ["small_rng"] }
+rand_pcg = "0.2.1"
