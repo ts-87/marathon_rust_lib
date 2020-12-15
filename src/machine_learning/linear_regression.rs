@@ -1,5 +1,5 @@
 use ml_util::inverse_array2;
-use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, NdFloat, arr1, arr2, stack};
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis, NdFloat, stack, arr1, arr2};
 
 use crate::machine_learning::ml_util;
 
