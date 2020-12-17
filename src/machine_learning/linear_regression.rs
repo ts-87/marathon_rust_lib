@@ -18,13 +18,13 @@ impl<T: NdFloat + Add + Sub + Mul> LinearRegression<T> {
         Self {weights: Array1::zeros(n)}
     }
 
-    pub fn fit(&mut self, x: &ArrayView2<T>, y: &ArrayView1<T>, intercept: bool) {
+    pub fn fit(&mut self, x: &Array2<T>, y: &Array1<T>, intercept: bool) {
         let cx;
         if intercept {
             cx = stack(Axis(1), &[x.view(), Array2::ones((x.shape()[0],1)).view()]).unwrap();  
         }
         else {
-            cx = x.add(T::zero());
+            cx = x.clone();
         }
         let xtx = cx.t().dot(&cx);
         let xtx_inv = inverse_array2(&xtx).unwrap();
@@ -32,7 +32,7 @@ impl<T: NdFloat + Add + Sub + Mul> LinearRegression<T> {
         self.weights = xtx_inv.dot(&xty);
     }
 
-    pub fn fit_grad(&mut self, x: &ArrayView2<T>, y: &ArrayView1<T>, lr: T, epoch: usize, intercept: bool, init: bool) {
+    pub fn fit_grad(&mut self, x: &Array2<T>, y: &Array1<T>, lr: T, epoch: usize, intercept: bool, init: bool) {
         if init {
             let sh = if intercept {x.shape()[1] + 1} else {x.shape()[1]};
             self.weights = Array1::ones(sh);
@@ -41,7 +41,7 @@ impl<T: NdFloat + Add + Sub + Mul> LinearRegression<T> {
         if intercept {
             cx = stack(Axis(1), &[x.view(), Array2::ones((x.shape()[0], 1)).view()]).unwrap();
         }
-        else {cx = x.add(T::zero());}
+        else {cx = x.clone();}
         //shaffle...
         for _i in 0..epoch {
             let delta = y - &cx.dot(&self.weights);
@@ -49,13 +49,13 @@ impl<T: NdFloat + Add + Sub + Mul> LinearRegression<T> {
         }
     }
     
-    pub fn fit_ridge(&mut self, x: &ArrayView2<T>, y: &ArrayView1<T>, lambda: T, intercept: bool){
+    pub fn fit_ridge(&mut self, x: &Array2<T>, y: &Array1<T>, lambda: T, intercept: bool){
         let cx;
         if intercept {
             cx = stack(Axis(1), &[x.view(), Array2::ones((x.shape()[0],1)).view()]).unwrap();  
         }
         else {
-            cx = x.add(T::zero());
+            cx = x.clone();
         }
         let mut eyep = Array2::eye(cx.shape()[1]);
         eyep[[0,0]] = T::zero();
@@ -65,7 +65,7 @@ impl<T: NdFloat + Add + Sub + Mul> LinearRegression<T> {
         self.weights = xtx_inv.dot(&xty);
     }
 
-    pub fn predict(&self, x: &ArrayView2<T>, intercept: bool) -> Array1<T> {
+    pub fn predict(&self, x: &Array2<T>, intercept: bool) -> Array1<T> {
         if intercept {
             let cx = stack(Axis(1), &[x.view(), Array2::ones((x.shape()[0], 1)).view()]).unwrap();
             cx.view().dot(&self.weights)
@@ -76,45 +76,67 @@ impl<T: NdFloat + Add + Sub + Mul> LinearRegression<T> {
     }
 }
 
-/*
-pub struct LinearRegression_online<T> 
+
+pub struct KernelRegression<T> 
     where
-    T: NdFloat,
-{
+    T: NdFloat + Add + Sub + Mul
+{   
+    n: usize,
     weights: Array1<T>,
-    lr : T
+    x: Array2<T>
 }
 
-impl<T: NdFloat> LinearRegression_online<T> {
-    pub fn new(n: usize, lr: T) -> Self {
-        Self {weights: Array1::zeros(n), lr: lr}
+impl<T: NdFloat + Add + Sub + Mul> KernelRegression<T> {
+    pub fn new(n: usize) -> Self {
+        Self {n: n, weights: Array1::zeros(n), x: Array2::zeros((n, n))}
+    }
+    #[inline]
+    pub fn kernel_func(xi: &ArrayView1<T>, xj: &ArrayView1<T>) -> T {
+        let beta: T = T::from(1.).unwrap();
+        (xi.sub(xj).mapv(|x| x*x).sum() * -beta).exp()
     }
 
-    pub fn step(&mut self, x: &ArrayView2<T>, y: &ArrayView1<T>, intercept: bool) {
-
-    }
-}
-
-impl<T: NdFloat> Regression<T> for LinearRegression_online<T> {
-    fn fit(&mut self, x: &ArrayView2<T>, y: &ArrayView1<T>, intercept: bool) {
-        if intercept {
-            let n = x.shape()[0];
-            stack(Axis(1), &[x.view(), Array2::ones((n,1)).view()]).unwrap();
+    pub fn fit(&mut self, x: &Array2<T>, y: &Array1<T>) {
+        self.x = x.clone();
+        let n = self.n;
+        let mut ker = Array2::<T>::zeros((n, n));
+        for i in 0..n {
+            for j in i..n {
+                let ker_ij = Self::kernel_func(&x.slice(s![i, ..]), &x.slice(s![j, ..]));
+                ker[[i, j]] = ker_ij; 
+                ker[[j, i]] = ker_ij;
+            }
         }
-        let xtx = x.t().dot(x);
-        let xtx_inv = inverse_array2(&xtx).unwrap();
-        let xty =  x.t().dot(y);
-        self.weights = xtx_inv.dot(&xty);
+        self.weights = inverse_array2(&ker).unwrap().dot(y);
     }
-    fn predict(&self, x: &ArrayView2<T>, intercept: bool) -> Array1<T> {
-        if intercept {
-            let n = x.shape()[0];
-            stack(Axis(1), &[x.view(), Array2::ones((n,1)).view()]).unwrap();
+
+    pub fn fit_ridge(&mut self, x: &Array2<T>, y: &Array1<T>, lambda: T) {
+        self.x = x.clone();
+        let n = self.n;
+        let mut ker = Array2::<T>::zeros((n, n));
+        for i in 0..n {
+            for j in i..n {
+                let ker_ij = Self::kernel_func(&x.slice(s![i, ..]), &x.slice(s![j, ..]));
+                ker[[i, j]] = ker_ij; 
+                ker[[j, i]] = ker_ij;
+            }
         }
-        x.dot(&self.weights)
+        let rker = inverse_array2(&ker.add(&Array2::<T>::eye(n).mul(lambda))).unwrap();
+        self.weights = rker.dot(y);
+    }
+
+    pub fn predict(&self, x: &Array2<T>) -> Array1<T> {
+        let m = x.shape()[0];
+        let mut y = Array1::<T>::zeros(m);
+        for i in 0..m {
+            for j in 0..self.n {
+                y[[i]] += self.weights[[j]] * Self::kernel_func(&self.x.slice(s![j, ..]), &x.slice(s![i,..]));
+            }  
+        }
+        y
     }
 }
-*/
+
 
 #[test]
 fn test_linear_regression(){
@@ -143,21 +165,30 @@ fn test_linear_regression(){
     ]);
     
     let mut model = LinearRegression::new(x.shape()[0]);
-    model.fit(&x.view(), &y.view(), true);
-    let res = model.predict(&x.view(), true);
+    model.fit(&x, &y, true);
+    let res = model.predict(&x, true);
     println!("{:?}", res);
     
 
 
     let mut model = LinearRegression::new(x.shape()[0]);
-    model.fit_grad(&x.view(), &y.view(), 1e-8, 20000,true, true);
-    let res = model.predict(&x.view(), true);
+    model.fit_grad(&x, &y, 1e-8, 20000,true, true);
+    let res = model.predict(&x, true);
     println!("{:?}", res);
     
 
     let mut model = LinearRegression::new(x.shape()[0]);
-    model.fit_ridge(&x.view(), &y.view(), 0.02, true);
-    let res = model.predict(&x.view(), true);
+    model.fit_ridge(&x, &y, 0.02, true);
+    let res = model.predict(&x, true);
+    println!("{:?}", res);
+    
+    let mut model = KernelRegression::new(x.shape()[0]);
+    model.fit(&x, &y);
+    let res = model.predict(&x);
     println!("{:?}", res);
 
+    let mut model = KernelRegression::new(x.shape()[0]);
+    model.fit_ridge(&x, &y, 0.001);
+    let res = model.predict(&x);
+    println!("{:?}", res);
 }

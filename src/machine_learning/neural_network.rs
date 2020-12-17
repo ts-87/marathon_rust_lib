@@ -181,7 +181,7 @@ fn test_neural_network(){
     let train_x_arr = normalizer.normalize(&Array::from_shape_vec((n,m), train_x).unwrap(), true);
     
     let mut model = NeuralNetwork::new();
-    model.fit(&train_x_arr, &Array::from_shape_vec((n, 2),train_y).unwrap(), 8, 0.00001, 1000, 42);
+    model.fit(&train_x_arr, &Array::from_shape_vec((n, 2),train_y).unwrap(), 10, 0.00001, 1000, 42);
     
     let test_iter = train_data.split_whitespace();
     let mut test_x = Vec::new();
