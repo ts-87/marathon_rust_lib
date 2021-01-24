@@ -1,3 +1,7 @@
+#![allow(unused_imports)]
+#![allow(dead_code)]
+#![allow(unused_macros)]
+
 #[macro_use] extern crate ndarray;
 pub mod util;
 pub mod algorithm;
