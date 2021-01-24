@@ -1,6 +1,6 @@
 
 #[inline]
-fn gcd<T: Copy + num::traits::Unsigned>(mut a: T, mut b: T) -> T {
+fn gcd<T: Copy + num_traits::Unsigned>(mut a: T, mut b: T) -> T {
     while a != T::zero() {
         let tmp = a;
         a = b % a;
