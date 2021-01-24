@@ -1,7 +1,7 @@
 
 #[inline]
-fn gcd(mut a: usize, mut b: usize) -> usize {
-    while a != 0 {
+fn gcd<T: Copy + num::traits::Unsigned>(mut a: T, mut b: T) -> T {
+    while a != T::zero() {
         let tmp = a;
         a = b % a;
         b = tmp;
