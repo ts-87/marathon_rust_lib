@@ -42,8 +42,8 @@ pub struct SatSolver {
     pos: Vec<usize>,
     neg: Vec<usize>,
     remcnt: Vec<usize>,
-    clauses: Vec<Vec<i32>>,
-    decision_stack: Vec<Vec<i32>>,
+    clauses: Vec<Vec<usize>>,
+    decision_stack: Vec<Vec<usize>>,
     literal_pos: Vec<Vec<usize>>,
     assigns: Vec<bool>,
     watch_clause_list: Vec<usize>,
@@ -64,28 +64,28 @@ impl SatSolver {
         }
     }
 
-    pub fn add_clause(&mut self, cl: Vec<i32>) {
+    pub fn add_clause(&mut self, cl: Vec<usize>) {
         let id = self.clauses.len();
         for i in cl.iter().copied() {
-            self.literal_pos[(i + self.n as i32) as usize].push(id);
-            self.remcnt[(i + self.n as i32) as usize] += 1;
+            self.literal_pos[i + self.n].push(id);
+            self.remcnt[i + self.n] += 1;
         }
         self.clauses.push(cl);
     }
 
-    pub fn push(&mut self, lit_id: i32) {
-        let id = (lit_id + self.n as i32) as usize;
+    pub fn push(&mut self, lit_id: usize) {
+        let id = lit_id + self.n;
         self.assigns[id] = true;
         self.decision_stack.last_mut().unwrap().push(lit_id);
         for &i in self.literal_pos[id].iter() {
             if self.pos[i] == 0 {
                 for &j in self.clauses[i].iter() {
-                    self.remcnt[(j + self.n as i32) as usize] -= 1;
+                    self.remcnt[j + self.n] -= 1;
                 }
             }
             self.pos[i] += 1;
         }
-        let id = (!lit_id + self.n as i32) as usize;
+        let id = !lit_id + self.n;
         for &i in self.literal_pos[id].iter() {
             if self.pos[i] == 0 {
                 self.watch_clause_list.push(i);
@@ -96,17 +96,17 @@ impl SatSolver {
 
     pub fn pop(&mut self) {
         let lit_id = self.decision_stack.last_mut().unwrap().pop().unwrap();
-        let id = (lit_id + self.n as i32) as usize;
+        let id = lit_id + self.n;
         self.assigns[id] = false;
         for &i in self.literal_pos[id].iter() {
             self.pos[i] -= 1;
             if self.pos[i] == 0 {
                 for &j in self.clauses[i].iter() {
-                    self.remcnt[(j + self.n as i32) as usize] += 1;
+                    self.remcnt[j + self.n] += 1;
                 }
             }
         }
-        let id = (!lit_id + self.n as i32) as usize;
+        let id = !lit_id + self.n;
         for &i in self.literal_pos[id].iter() {
             self.neg[i] -= 1;
         }
@@ -117,11 +117,11 @@ impl SatSolver {
             if self.pos[lit_id] > 0 {continue;}
             if self.neg[lit_id] == self.clauses[lit_id].len() {return false;}
             if self.neg[lit_id] + 1 == self.clauses[lit_id].len() {
-                let nx = if let Some(&nx) = self.clauses[lit_id].iter().filter(|&x| !self.assigns[(*x+self.n as i32) as usize] && !self.assigns[(!*x+self.n as i32) as usize]).next() {
+                let nx = if let Some(&nx) = self.clauses[lit_id].iter().filter(|&x| !self.assigns[*x+self.n] && !self.assigns[!*x+self.n]).next() {
                     nx
                 }
-                else {self.n as i32};
-                if self.assigns[(!nx+self.n as i32) as usize] {return false;}
+                else {self.n};
+                if self.assigns[!nx+self.n] {return false;}
                 self.push(nx);
             }
         }
@@ -138,7 +138,7 @@ impl SatSolver {
                 .filter(|&i| self.remcnt[i+self.n] + self.remcnt[!i+self.n] > 0)
                 .max_by(|&a, &b| (self.remcnt[a+self.n] + self.remcnt[!a+self.n]).cmp(&(self.remcnt[b+self.n] + self.remcnt[!b+self.n]))) {
                     self.decision_stack.push(Vec::new());
-                    self.push(nid as i32);
+                    self.push(nid);
                 }
                 else {return true;}
             }
@@ -181,7 +181,7 @@ fn sat_test(){
                 let mut pi = read!(input, i32);
                 if pi == 0 {break;}
                 if pi > 0 {pi -= 1;}
-                tcl.push(pi);
+                tcl.push(pi as usize);
             }
             solver.add_clause(tcl);
         }
