@@ -1,15 +1,5 @@
 
 #[inline]
-fn gcd<T: Copy + num_traits::Unsigned>(mut a: T, mut b: T) -> T {
-    while a != T::zero() {
-        let tmp = a;
-        a = b % a;
-        b = tmp;
-    }
-    b
-}
-
-#[inline]
 fn modpow (mut x: usize, mut n: usize, m: usize) -> usize {
     let mut ret = 1;
     while n > 0 {
