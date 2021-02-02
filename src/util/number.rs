@@ -47,6 +47,26 @@ impl Factrial {
     }
 }
 
+
+fn exgcd(a: i64, b: i64, x: &mut i64, y: &mut i64) -> i64 {
+    let mut d = a;
+    if b != 0 {
+        d = exgcd(b, a%b, y, x);
+        *y -= a / b * *x;
+    }
+    else {
+        *x = 1;
+        *y = 0;
+    }
+    d
+}
+fn mod_inverse(a: i64, m: i64) -> i64 {
+    let mut x = 1;
+    let mut y = 0;
+    exgcd(a, m, &mut x, &mut y);
+    (m + x % m) % m
+}
+
 #[test]
 fn number_test(){
 
