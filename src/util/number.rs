@@ -47,7 +47,7 @@ impl Factrial {
     }
 }
 
-
+#[inline]
 fn exgcd(a: i64, b: i64, x: &mut i64, y: &mut i64) -> i64 {
     let mut d = a;
     if b != 0 {
