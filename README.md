@@ -1,8 +1,8 @@
 # marathon_rust_lib
-主にマラソン用snippet
+主にMM用snippet
 
 ## Contents
 - pastcontest  
-過去に開催されたマラソンマッチのコード(Rustで書いたもののみ)  
+過去に開催されたMMのコード(Rustで書いたもののみ)  
 - src   
-マラソンで使えそうなの  
+MMで使えそうなの  
